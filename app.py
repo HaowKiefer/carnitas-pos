@@ -1,6 +1,7 @@
 # Este programa fue desarrollado por Abelino Zuniga (haowkiefer) y Rodrigo Rubio
 # El video de como se usa esta en yt con la liga https://www.youtube.com/watch?v=7e117ckDJ1s
 
+import json
 import os
 import sys
 from flask import Flask, render_template, request, redirect, session, url_for
@@ -20,6 +21,17 @@ app = Flask(
 )
 app.secret_key = "clave_simple"  # En producción, usa una clave aleatoria y segura
 
+
+def obtener_ruta_config_db():
+    """Guarda la configuración en AppData (Windows) o ~/.config/CarnitasPOS (Linux)."""
+    if os.name == "nt":
+        carpeta = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "CarnitasPOS")
+    else:
+        carpeta = os.path.join(os.path.expanduser("~"), ".config", "CarnitasPOS")
+    os.makedirs(carpeta, exist_ok=True)
+    return os.path.join(carpeta, "db_config.json")
+
+
 DB_CONFIG = {
     "host": "127.0.0.1",
     "user": "mesero",
@@ -27,6 +39,74 @@ DB_CONFIG = {
     "database": "carnitas",
     "port": 3306
 }
+
+
+def cargar_db_config():
+    ruta = obtener_ruta_config_db()
+    if os.path.exists(ruta):
+        try:
+            with open(ruta, "r", encoding="utf-8") as f:
+                datos = json.load(f)
+                DB_CONFIG.update(datos)
+        except Exception:
+            pass
+
+
+def guardar_db_config(nuevo_config):
+    DB_CONFIG.update(nuevo_config)
+    ruta = obtener_ruta_config_db()
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(DB_CONFIG, f, indent=2)
+
+
+def probar_conexion_y_tablas():
+    """Verifica si se puede conectar y si la tabla 'empleados' existe."""
+    try:
+        con = mariadb.connect(
+            host=DB_CONFIG["host"],
+            user=DB_CONFIG["user"],
+            password=DB_CONFIG["password"],
+            database=DB_CONFIG["database"],
+            port=int(DB_CONFIG["port"]),
+        )
+        cur = con.cursor()
+        cur.execute("SHOW TABLES LIKE 'empleados'")
+        existe = cur.fetchone() is not None
+        con.close()
+        return existe
+    except Exception:
+        return False
+
+
+def inicializar_sql_con_credenciales(host, port, user, password, database, ruta_sql):
+    """Conecta con las credenciales dadas, crea la BD si falta e importa carnitas.sql."""
+    con = mariadb.connect(host=host, port=int(port), user=user, password=password)
+    cur = con.cursor()
+    cur.execute(f"CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+    cur.execute(f"USE `{database}`;")
+
+    with open(ruta_sql, "r", encoding="utf-8") as f:
+        contenido_sql = f.read()
+
+    # Limpiar comentarios de línea y dividir sentencias SQL de forma segura
+    lineas_limpias = []
+    for linea in contenido_sql.splitlines():
+        strip_l = linea.strip()
+        if not strip_l or strip_l.startswith("--") or strip_l.startswith("#"):
+            continue
+        lineas_limpias.append(linea)
+
+    sql_unido = "\n".join(lineas_limpias)
+    for sentencia in sql_unido.split(";"):
+        limpia = sentencia.strip()
+        if limpia and not (limpia.startswith("/*") and limpia.endswith("*/")):
+            cur.execute(limpia)
+
+    con.commit()
+    con.close()
+
+
+cargar_db_config()
 mesa_global = None
 
 
@@ -36,8 +116,106 @@ def get_conexion_db():
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
         database=DB_CONFIG["database"],
-        port=DB_CONFIG["port"]
+        port=int(DB_CONFIG["port"])
     )
+
+
+@app.before_request
+def verificar_configuracion_db():
+    """Si aún no hay conexión válida o faltan tablas, redirige al formulario de conexión."""
+    if request.endpoint in ("configurar_db", "static"):
+        return None
+    if not probar_conexion_y_tablas():
+        return redirect(url_for("configurar_db"))
+
+
+@app.route("/configurar_db", methods=["GET", "POST"])
+def configurar_db():
+    error = None
+    if request.method == "POST":
+        host = request.form.get("host", "127.0.0.1").strip()
+        port = int(request.form.get("port", 3306))
+        user = request.form.get("user", "root").strip()
+        password = request.form.get("password", "")
+        database = request.form.get("database", "carnitas").strip()
+
+        try:
+            # 1. Probar conexión básica al servidor MariaDB/MySQL
+            con = mariadb.connect(host=host, port=port, user=user, password=password)
+            cur = con.cursor()
+            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+            cur.execute(f"USE `{database}`;")
+            cur.execute("SHOW TABLES LIKE 'empleados'")
+            tiene_tablas = cur.fetchone() is not None
+            con.close()
+
+            # 2. Si la BD está vacía, buscar carnitas.sql e importarlo
+            if not tiene_tablas:
+                posibles_rutas = []
+                if getattr(sys, "frozen", False):
+                    posibles_rutas.append(os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "carnitas.sql"))
+                posibles_rutas.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "carnitas.sql"))
+                posibles_rutas.append(os.path.join(os.getcwd(), "carnitas.sql"))
+
+                ruta_sql = next((r for r in posibles_rutas if os.path.exists(r)), None)
+                if not ruta_sql:
+                    raise FileNotFoundError(f"No se encontró carnitas.sql en: {posibles_rutas[0]}")
+
+                inicializar_sql_con_credenciales(host, port, user, password, database, ruta_sql)
+
+            # 3. Guardar credenciales en disco y entrar al login
+            guardar_db_config({
+                "host": host,
+                "port": port,
+                "user": user,
+                "password": password,
+                "database": database
+            })
+            return redirect(url_for("login"))
+
+        except Exception as e:
+            error = f"No se pudo conectar o importar la base de datos: {e}"
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Configurar Base de Datos - Carnitas POS</title>
+        <style>
+            body {{ font-family: 'Segoe UI', sans-serif; background: #18181b; color: #f4f4f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
+            .card {{ background: #27272a; padding: 30px; border-radius: 12px; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
+            h2 {{ margin-top: 0; color: #f59e0b; }}
+            label {{ display: block; margin-top: 12px; font-size: 14px; color: #d4d4d8; }}
+            input {{ width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #3f3f46; background: #18181b; color: white; box-sizing: border-box; }}
+            button {{ width: 100%; padding: 12px; margin-top: 20px; background: #f59e0b; color: #18181b; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; }}
+            button:hover {{ background: #d97706; }}
+            .error {{ background: #7f1d1d; color: #fecaca; padding: 10px; border-radius: 6px; margin-top: 15px; font-size: 13px; }}
+            .hint {{ font-size: 12px; color: #a1a1aa; margin-top: 8px; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>Conexión a MariaDB / MySQL</h2>
+            <p class="hint">Ingresa las credenciales de tu servidor local. Si la base de datos aún no existe, se creará e importará automáticamente.</p>
+            {f'<div class="error">{error}</div>' if error else ''}
+            <form method="POST">
+                <label>Servidor (Host)</label>
+                <input type="text" name="host" value="{DB_CONFIG['host']}" required>
+                <label>Puerto</label>
+                <input type="number" name="port" value="{DB_CONFIG['port']}" required>
+                <label>Usuario de MySQL / MariaDB (ej. root)</label>
+                <input type="text" name="user" value="root" required>
+                <label>Contraseña de MySQL / MariaDB</label>
+                <input type="password" name="password" placeholder="Déjalo vacío si no tiene contraseña">
+                <label>Nombre de la Base de Datos</label>
+                <input type="text" name="database" value="{DB_CONFIG['database']}" required>
+                <button type="submit">Conectar e Instalar Base de Datos</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """
 
 
 # --- VALIDACIÓN DE LOGIN CON BLOQUEO TEMPORAL (RF-06) ---
@@ -912,23 +1090,37 @@ def recetas():
             producto_venta = request.form.get("producto_venta")
             id_inventario = request.form.get("id_inventario")
             try:
-                cantidad_descuento = float(request.form.get("cantidad_descuento", 0))
+                cantidad_descontar = float(request.form.get("cantidad_descontar", 0))
             except ValueError:
-                cantidad_descuento = 0.0
+                cantidad_descontar = 0.0
 
-            if producto_venta and id_inventario and cantidad_descuento > 0:
+            if producto_venta and id_inventario and cantidad_descontar > 0:
                 try:
                     con = get_conexion_db()
                     cur = con.cursor()
                     cur.execute("""
-                        INSERT INTO recetas (producto_venta, id_inventario, cantidad_descuento)
-                        VALUES (%s, %s, %s)
-                    """, (producto_venta, id_inventario, cantidad_descuento))
+                        SELECT id FROM recetas
+                        WHERE LOWER(producto_venta) = LOWER(%s) AND id_inventario = %s
+                    """, (producto_venta, id_inventario))
+                    existe = cur.fetchone()
+
+                    if existe:
+                        cur.execute("""
+                            UPDATE recetas SET cantidad_descontar = %s WHERE id = %s
+                        """, (cantidad_descontar, existe[0]))
+                    else:
+                        cur.execute("""
+                            INSERT INTO recetas (producto_venta, id_inventario, cantidad_descontar)
+                            VALUES (%s, %s, %s)
+                        """, (producto_venta, id_inventario, cantidad_descontar))
+
                     con.commit()
                     con.close()
-                    mensaje = "Ingrediente/receta guardado correctamente."
+                    mensaje = "Regla de inventario guardada correctamente."
                 except Exception as e:
-                    mensaje = f"Error al guardar receta: {e}"
+                    mensaje = f"Error al guardar regla: {e}"
+            else:
+                mensaje = "Selecciona un producto, un insumo y una cantidad válida."
 
         elif accion == "eliminar":
             id_receta = request.form.get("id_receta")
@@ -938,9 +1130,9 @@ def recetas():
                 cur.execute("DELETE FROM recetas WHERE id = %s", (id_receta,))
                 con.commit()
                 con.close()
-                mensaje = "Ingrediente eliminado de la receta."
+                mensaje = "Regla eliminada."
             except Exception as e:
-                mensaje = f"Error al eliminar ingrediente: {e}"
+                mensaje = f"Error al eliminar regla: {e}"
 
     try:
         con = get_conexion_db()
@@ -948,32 +1140,33 @@ def recetas():
 
         cur.execute("""
             SELECT nombre FROM comida
-            UNION SELECT nombre FROM bebida
-            UNION SELECT nombre FROM extras
+            UNION
+            SELECT nombre FROM bebida
+            UNION
+            SELECT nombre FROM extras
             ORDER BY nombre ASC
         """)
-        productos_venta = [r[0] for r in cur.fetchall()]
+        productos_menu = [r[0] for r in cur.fetchall()]
 
         cur.execute("SELECT id, producto, unidad_medida FROM inventario ORDER BY producto ASC")
         insumos = cur.fetchall()
 
         cur.execute("""
-            SELECT r.id, r.producto_venta, i.producto, r.cantidad_descuento, i.unidad_medida
+            SELECT r.id, r.producto_venta, i.producto, r.cantidad_descontar, i.unidad_medida
             FROM recetas r
             JOIN inventario i ON r.id_inventario = i.id
             ORDER BY r.producto_venta ASC
         """)
-        recetas_existentes = cur.fetchall()
-
+        reglas = cur.fetchall()
         con.close()
     except Exception as e:
         return f"Error al cargar recetas: {e}"
 
     return render_template(
         "recetas.html",
-        productos_venta=productos_venta,
+        productos_menu=productos_menu,
         insumos=insumos,
-        recetas=recetas_existentes,
+        reglas=reglas,
         mensaje=mensaje,
         usuario=session.get("usuario")
     )
@@ -981,184 +1174,149 @@ def recetas():
 
 @app.route("/bebida")
 def bebida():
-    if "usuario" not in session and not mesa_global:
-        return redirect("/")
-
     try:
         con = get_conexion_db()
         cur = con.cursor()
-        cur.execute("SELECT nombre, precio FROM bebida")
+        cur.execute("SELECT * FROM bebida")
         datos = cur.fetchall()
-        columnas = ["Producto", "Precio"]
+        columnas = [desc[0] for desc in cur.description]
         con.close()
     except Exception as e:
-        return f"Error al cargar las bebidas: {e}"
+        return f"Error al cargar los datos: {e}"
 
-    if session.get("rol") == "admin":
-        return render_template("bebida.html", datos=datos, columnas=columnas, usuario=session.get("usuario"))
-    else:
-        return render_template("bebida_orden.html", datos=datos, columnas=columnas, tabla="BEBIDAS", mesa=mesa_global)
+    return render_template(
+        "bebida.html",
+        datos=datos,
+        columnas=columnas,
+        usuario=session.get("usuario", "Cliente"),
+        mesa=mesa_global
+    )
 
 
 @app.route("/comida")
 def comida():
-    if "usuario" not in session and not mesa_global:
-        return redirect("/")
-
     try:
         con = get_conexion_db()
         cur = con.cursor()
-        cur.execute("SELECT nombre, precio FROM comida")
+        cur.execute("SELECT * FROM comida")
         datos = cur.fetchall()
-        columnas = ["Producto", "Precio"]
+        columnas = [desc[0] for desc in cur.description]
         con.close()
     except Exception as e:
-        return f"Error al cargar las comidas: {e}"
+        return f"Error al cargar los datos: {e}"
 
-    if session.get("rol") == "admin":
-        return render_template("comida.html", datos=datos, columnas=columnas, usuario=session.get("usuario"))
-    else:
-        return render_template("comida_orden.html", datos=datos, columnas=columnas, tabla="COMIDA", mesa=mesa_global)
+    return render_template(
+        "comida.html",
+        datos=datos,
+        columnas=columnas,
+        usuario=session.get("usuario", "Cliente"),
+        mesa=mesa_global
+    )
 
 
 @app.route("/extras")
 def extras():
-    if "usuario" not in session and not mesa_global:
-        return redirect("/")
-
     try:
         con = get_conexion_db()
         cur = con.cursor()
-        cur.execute("SELECT nombre, precio FROM extras")
+        cur.execute("SELECT * FROM extras")
         datos = cur.fetchall()
-        columnas = ["Producto", "Precio"]
+        columnas = [desc[0] for desc in cur.description]
         con.close()
     except Exception as e:
-        return f"Error al cargar los extras: {e}"
+        return f"Error al cargar los datos: {e}"
 
-    if session.get("rol") == "admin":
-        return render_template("extras.html", datos=datos, columnas=columnas, usuario=session.get("usuario"))
-    else:
-        return render_template("extras_orden.html", datos=datos, columnas=columnas, tabla="EXTRAS", mesa=mesa_global)
+    return render_template(
+        "extras.html",
+        datos=datos,
+        columnas=columnas,
+        usuario=session.get("usuario", "Cliente"),
+        mesa=mesa_global
+    )
 
 
-@app.route("/cuenta")
+@app.route("/cuenta", methods=["GET", "POST"])
 def cuenta():
-    global mesa_global
-
-    try:
-        con = get_conexion_db()
-        cur = con.cursor()
-        cur.execute("""
-            SELECT
-                id, producto, precio, cantidad, cebolla, cilantro, nopales, (precio * cantidad) AS subtotal
-            FROM ordenes
-            WHERE mesa = %s
-        """, (mesa_global,))
-        datos = cur.fetchall()
-        total = sum(fila[7] for fila in datos)
-        con.close()
-    except Exception as e:
-        return f"Error: {e}"
-    return render_template("cuenta.html", datos=datos, mesa=mesa_global, total=total)
-
-
-@app.route("/borrar_item", methods=["POST"])
-def borrar_item():
-    id_orden = request.form.get("id_orden")
-    try:
-        con = get_conexion_db()
-        cur = con.cursor()
-        cur.execute("DELETE FROM ordenes WHERE id = %s", (id_orden,))
-        con.commit()
-        con.close()
-    except Exception as e:
-        return f"Error al borrar item: {e}"
-
-    return redirect(url_for("cuenta"))
-
-
-@app.route("/borrar_cuenta", methods=["POST"])
-def borrar_cuenta():
     global mesa_global
 
     if not mesa_global:
         return redirect(url_for("usuario_inicio"))
 
-    try:
-        con = get_conexion_db()
-        cur = con.cursor()
+    con = get_conexion_db()
+    cur = con.cursor()
 
-        cur.execute("SELECT COALESCE(MAX(id_venta), 0) + 1 FROM ventas")
-        siguiente_id_venta = cur.fetchone()[0]
+    if request.method == "POST":
+        accion = request.form.get("accion")
 
-        cur.execute("""
-            SELECT mesa, producto, precio, cantidad, cebolla, cilantro, nopales, (precio * cantidad) AS subtotal
-            FROM ordenes
-            WHERE mesa = %s
-        """, (mesa_global,))
-        ordenes_actuales = cur.fetchall()
+        if accion == "eliminar":
+            id_orden = request.form.get("id_orden")
+            cur.execute("DELETE FROM ordenes WHERE id = %s", (id_orden,))
+            con.commit()
 
-        for fila in ordenes_actuales:
-            producto_nombre = fila[1]
-            cantidad_ordenada = fila[3]
-
+        elif accion == "pagar":
             cur.execute("""
-                INSERT INTO ventas (id_venta, mesa, producto, precio, cantidad, cebolla, cilantro, nopales, subtotal)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (siguiente_id_venta, fila[0], producto_nombre, fila[2], cantidad_ordenada, fila[4], fila[5], fila[6], fila[7]))
+                SELECT producto, precio, cantidad, cebolla, cilantro, nopales
+                FROM ordenes
+                WHERE mesa = %s
+            """, (mesa_global,))
+            ordenes = cur.fetchall()
 
-            cur.execute("""
-                SELECT id_inventario, cantidad_descuento
-                FROM recetas
-                WHERE LOWER(TRIM(producto_venta)) = LOWER(TRIM(%s))
-            """, (producto_nombre,))
-            ingredientes = cur.fetchall()
+            cur.execute("SELECT COALESCE(MAX(id_venta), 0) + 1 FROM ventas")
+            nuevo_id_venta = cur.fetchone()[0]
 
-            for id_inv, cant_unidad in ingredientes:
-                descuento_total = float(cant_unidad) * cantidad_ordenada
+            for o in ordenes:
+                producto_nombre = o[0]
+                precio_unitario = o[1]
+                cantidad_vendida = o[2]
+                subtotal = precio_unitario * cantidad_vendida
+
                 cur.execute("""
-                    UPDATE inventario
-                    SET cantidad = GREATEST(0, cantidad - %s)
-                    WHERE id = %s
-                """, (descuento_total, id_inv))
+                    INSERT INTO ventas (id_venta, mesa, producto, precio, cantidad, subtotal)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (nuevo_id_venta, mesa_global, producto_nombre, precio_unitario, cantidad_vendida, subtotal))
 
-        cur.execute("DELETE FROM ordenes WHERE mesa = %s", (mesa_global,))
+                cur.execute("""
+                    SELECT id_inventario, cantidad_descontar
+                    FROM recetas
+                    WHERE LOWER(producto_venta) = LOWER(%s)
+                """, (producto_nombre,))
+                ingredientes = cur.fetchall()
 
-        con.commit()
-        con.close()
-    except Exception as e:
-        return f"Error al finalizar y registrar la cuenta: {e}"
+                for ing in ingredientes:
+                    id_inv, cant_desc = ing[0], float(ing[1])
+                    total_descontar = cant_desc * cantidad_vendida
+                    cur.execute("""
+                        UPDATE inventario
+                        SET cantidad = GREATEST(0, cantidad - %s)
+                        WHERE id = %s
+                    """, (total_descontar, id_inv))
 
-    mesa_global = None
-    return redirect(url_for("usuario_inicio"))
+            cur.execute("DELETE FROM ordenes WHERE mesa = %s", (mesa_global,))
+            con.commit()
+            con.close()
 
+            mesa_global = None
+            return redirect(url_for("usuario_inicio"))
 
-@app.route("/quitar_uno", methods=["POST"])
-def quitar_uno():
-    id_orden = request.form.get("id_orden")
+    cur.execute("""
+        SELECT id, producto, precio, cantidad, cebolla, cilantro, nopales,
+               (precio * cantidad) AS subtotal
+        FROM ordenes
+        WHERE mesa = %s
+    """, (mesa_global,))
+    datos = cur.fetchall()
 
-    try:
-        con = get_conexion_db()
-        cur = con.cursor()
-        cur.execute("""
-            UPDATE ordenes
-            SET cantidad = cantidad - 1
-            WHERE id = %s AND cantidad > 1
-        """, (id_orden,))
-        con.commit()
-        con.close()
-    except Exception as e:
-        return f"Error al quitar uno: {e}"
+    total = sum(d[7] for d in datos)
+    con.close()
 
-    return redirect(url_for("cuenta"))
+    return render_template("cuenta.html", datos=datos, total=total, mesa=mesa_global)
 
 
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    return redirect("/")
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)
