@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Empleados</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f1c40f;
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 1100px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .form-agregar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .form-agregar input, .form-agregar select {
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            grid-column: 1 / -1;
+            transition: background 0.25s ease;
+        }
+
+        .btn-add:hover { background: #27ae60; }
+
+        .table-responsive { overflow-x: auto; margin-bottom: 20px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+
+        th, td { padding: 12px 10px; border: 1px solid #e0e0e0; text-align: center; font-size: 14px; }
+
+        th { background-color: var(--primary); color: white; text-transform: uppercase; }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* Insignias de Estado */
+        .badge {
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+        }
+
+        .badge-active { background-color: var(--success); }
+        .badge-inactive { background-color: var(--danger); }
+        .badge-inturno { background-color: var(--accent); }
+        .badge-outturno { background-color: #95a5a6; }
+
+        /* Botones de Acción */
+        .btn-action {
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            color: white;
+            margin: 2px;
+        }
+
+        .btn-in { background-color: var(--success); }
+        .btn-out { background-color: var(--warning); color: #333; }
+        .btn-baja { background-color: var(--danger); }
+        .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .alert-msg {
+            background: #e8f4fd;
+            color: var(--primary);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>GESTIÓN DE EMPLEADOS Y USUARIOS</h2>
+
+    {% if mensaje %}
+    <div class="alert-msg">{{ mensaje }}</div>
+    {% endif %}
+
+    <!-- Formulario para Registrar Empleado y Credenciales de Acceso -->
+    <form method="POST" action="{{ url_for('empleados') }}" class="form-agregar">
+        <input type="hidden" name="accion" value="agregar">
+        <input type="text" name="nombre" placeholder="Nombre" required>
+        <input type="text" name="apellido" placeholder="Apellido" required>
+        <input type="text" name="usuario" placeholder="Usuario para login" required>
+        <input type="password" name="password" placeholder="Contraseña" required>
+        <select name="rol">
+            <option value="mesero">Mesero</option>
+            <option value="admin">Administrador</option>
+        </select>
+        <input type="text" name="telefono" placeholder="Teléfono">
+        <input type="text" name="direccion" placeholder="Dirección">
+        <button type="submit" class="btn-add">➕ Registrar Empleado y Acceso</button>
+    </form>
+
+    <!-- Tabla con Asistencia, Estado de Turno y Baja Lógica -->
+    <div class="table-responsive">
+        {% if datos %}
+        <table>
+            <thead>
+                <tr>
+                    {% for col in columnas %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                <tr>
+                    <td><strong>#{{ fila[0] }}</strong></td>
+                    <td>{{ fila[1] }} {{ fila[2] }}</td>
+                    <td><code>{{ fila[3] }}</code></td>
+                    <td><span class="badge badge-inturno">{{ fila[4]|upper }}</span></td>
+                    <td>{{ fila[5] if fila[5] else 'N/A' }}</td>
+                    
+                    <!-- Estado Acceso -->
+                    <td>
+                        {% if fila[6] == 1 %}
+                        <span class="badge badge-active">ACTIVO</span>
+                        {% else %}
+                        <span class="badge badge-inactive">INACTIVO</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Estado del Turno -->
+                    <td>
+                        {% if fila[7] == 1 %}
+                        <span class="badge badge-inturno">DENTRO DE TURNO</span>
+                        {% else %}
+                        <span class="badge badge-outturno">FUERA DE TURNO</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Columna de Acciones -->
+                    <td>
+                        <div style="display: flex; justify-content: center; gap: 4px;">
+                            <!-- Botón Entrada (Bloqueado si ya entró o está inactivo) -->
+                            <form method="POST" action="{{ url_for('fichar_asistencia') }}">
+                                <input type="hidden" name="numero_empleado" value="{{ fila[0] }}">
+                                <input type="hidden" name="tipo" value="entrada">
+                                <button type="submit" class="btn-action btn-in" {% if fila[6] == 0 or fila[7] == 1 %}disabled{% endif %}>
+                                    📥 Entrada
+                                </button>
+                            </form>
+
+                            <!-- Botón Salida (Bloqueado si no ha entrado o está inactivo) -->
+                            <form method="POST" action="{{ url_for('fichar_asistencia') }}">
+                                <input type="hidden" name="numero_empleado" value="{{ fila[0] }}">
+                                <input type="hidden" name="tipo" value="salida">
+                                <button type="submit" class="btn-action btn-out" {% if fila[6] == 0 or fila[7] == 0 %}disabled{% endif %}>
+                                    📤 Salida
+                                </button>
+                            </form>
+
+                            <!-- Baja Lógica -->
+                            {% if fila[6] == 1 %}
+                            <form method="POST" action="{{ url_for('empleados') }}" onsubmit="return confirm('¿Confirmas dar de baja a {{ fila[1] }}? Se desactivará su acceso conservando su historial.');">
+                                <input type="hidden" name="accion" value="baja_logica">
+                                <input type="hidden" name="numero_empleado" value="{{ fila[0] }}">
+                                <button type="submit" class="btn-action btn-baja">🚫 Baja</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666; font-style: italic; margin: 30px 0;">No hay empleados registrados en el sistema.</p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('administrador_inicio') }}" class="btn-back">⬅ Volver al Panel Admin</a>
+</div>
+
+</body>
+</html>

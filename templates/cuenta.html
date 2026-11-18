@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta Mesa {{ mesa }}</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --text: #333;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        h2 {
+            color: var(--primary);
+            text-transform: uppercase;
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+        .card {
+            width: 95%;
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+
+        .total-row td {
+            font-weight: bold;
+            background: #f3f8ff;
+            font-size: 18px;
+        }
+
+        .btn-delete {
+            background: transparent;
+            border: none;
+            color: var(--danger);
+            font-size: 18px;
+            cursor: pointer;
+            margin: 0 4px;
+        }
+
+        .btn-minus {
+            background: transparent;
+            border: none;
+            color: #e67e22;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 0 4px;
+        }
+
+        .actions {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            padding: 12px 22px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+        .btn-back { background: var(--accent); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        @media (max-width: 600px) {
+            .btn { width: 100%; }
+            th, td { font-size: 13px; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<h2>Cuenta de la Mesa {{ mesa }}</h2>
+
+{% if datos %}
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th class="text-left">Producto</th>
+                <th class="text-right">Precio</th>
+                <th class="text-right">Cantidad</th>
+                <th>Extras</th>
+                <th class="text-right">Subtotal</th>
+                <th>Eliminar</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in datos %}
+            <tr>
+                <td>{{ fila[1] }}</td>
+                <td>${{ fila[2] }}</td>
+                <td>{{ fila[3] }}</td>
+                <td>
+                    {% if fila[4] %} Cebolla {% endif %}
+                    {% if fila[5] %} Cilantro {% endif %}
+                    {% if fila[6] %} Nopales {% endif %}
+                </td>
+                <td>${{ fila[7] }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('borrar_item') }}">
+                        <input type="hidden" name="id_orden" value="{{ fila[0] }}">
+                        <button type="submit" class="btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+
+            <tr class="total-row">
+                <td colspan="4" class="text-right">TOTAL</td>
+                <td class="text-right">${{ "%.2f"|format(total) }}</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="actions">
+        <form method="POST" action="{{ url_for('borrar_cuenta') }}"
+              onsubmit="return confirm('¿Seguro que quieres finalizar la cuenta?');">
+            <button type="submit" class="btn btn-danger">
+                Finalizar cuenta (Mesa {{ mesa }})
+            </button>
+        </form>
+
+        <a href="{{ url_for('menu_mesa') }}" class="btn btn-back">
+            ⬅ Volver al Menú
+        </a>
+    </div>
+</div>
+{% else %}
+<p>No hay órdenes en esta mesa.</p>
+<a href="{{ url_for('menu_mesa') }}" class="btn btn-back">⬅ Volver</a>
+{% endif %}
+
+</body>
+</html>

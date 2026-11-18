@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventario de Insumos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --success: #2ecc71;
+            --bg: #f8f9fa; 
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .alert-msg {
+            background: #e8f8f5;
+            color: #16a085;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border: 1px solid #a3e4d7;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f5f9; }
+
+        .qty-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-qty {
+            width: 90px;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .btn-update {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: background 0.2s ease;
+        }
+
+        .btn-update:hover {
+            background: #2980b9;
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-back:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>INVENTARIO DE INSUMOS EN STOCK</h2>
+
+    {% if mensaje %}
+    <div class="alert-msg">{{ mensaje }}</div>
+    {% endif %}
+
+    <div class="table-responsive">
+        {% if datos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Unidad</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                <tr>
+                    <!-- FORMULARIO INDIVIDUAL POR FILA -->
+                    <form method="POST" action="{{ url_for('inventario') }}">
+                        <input type="hidden" name="id_item" value="{{ fila[0] }}">
+
+                        <!-- 1. PRODUCTO -->
+                        <td><strong>{{ fila[1] }}</strong></td>
+                        
+                        <!-- 2. CANTIDAD (Validación estricta de solo números y punto) -->
+                        <td>
+                            <div class="qty-container">
+                                <input type="text" 
+                                       inputmode="decimal" 
+                                       name="nueva_cantidad" 
+                                       value="{{ "%.2f"|format(fila[2]) }}" 
+                                       class="input-qty" 
+                                       required
+                                       onkeydown="validarSoloNumerosYPunto(event)"
+                                       oninput="filtrarEntrada(this)">
+                            </div>
+                        </td>
+
+                        <!-- 3. UNIDAD -->
+                        <td><code>{{ fila[3] }}</code></td>
+
+                        <!-- 4. ACCIÓN (Boton Centrado) -->
+                        <td>
+                            <button type="submit" class="btn-update">💾 Guardar</button>
+                        </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666; font-style: italic; margin: 30px 0;">No hay productos ni insumos registrados en el inventario.</p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('administrador_inicio') }}" class="btn-back">⬅ Volver al Panel Admin</a>
+</div>
+
+<!-- SCRIPT DE VALIDACIÓN PARA PERMITIR SOLO NÚMEROS Y UN SOLO PUNTO DECIMAL -->
+<script>
+    function validarSoloNumerosYPunto(e) {
+        // Permitir teclas especiales (Backspace, Delete, Tab, Esc, Enter, Flechas)
+        if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+            return;
+        }
+
+        // Permitir un solo punto decimal
+        if (e.key === '.' && !e.target.value.includes('.')) {
+            return;
+        }
+
+        // Bloquear si la tecla presionada no es un número entre 0 y 9
+        if (!/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+        }
+    }
+
+    function filtrarEntrada(input) {
+        // Limpia en caso de que el usuario intente pegar texto con caracteres no permitidos
+        input.value = input.value.replace(/[^0-9.]/g, '');
+        
+        // Evita que peguen múltiples puntos (ejemplo: 12.34.56 -> 12.3456)
+        const partes = input.value.split('.');
+        if (partes.length > 2) {
+            input.value = partes[0] + '.' + partes.slice(1).join('');
+        }
+    }
+</script>
+
+</body>
+</html>

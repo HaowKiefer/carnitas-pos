@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Ventas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --bg: #f8f9fa; 
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        /* Tarjetas de Resumen de Totales */
+        .totales-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .card-total {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border-left: 6px solid var(--accent);
+            text-align: left;
+        }
+
+        .card-total.dia { border-left-color: var(--success); }
+        .card-total.semanal { border-left-color: var(--warning); }
+        .card-total.anual { border-left-color: var(--accent); }
+
+        .card-total h4 {
+            margin: 0 0 8px 0;
+            color: #7f8c8d;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-total .monto {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .card-total small {
+            display: block;
+            margin-top: 5px;
+            color: #95a5a6;
+            font-size: 11px;
+        }
+
+        /* Contenedor de Filtro / Título de la lista */
+        .header-tabla {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-tabla h3 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        .btn-filter {
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.25s ease;
+        }
+
+        .btn-filter:hover {
+            background: #1a252f;
+        }
+
+        /* Tabla de registros */
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f5f9; }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-back:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>HISTORIAL DE VENTAS</h2>
+
+    <!-- Contenedor con los 3 Totales -->
+    <div class="totales-grid">
+        <div class="card-total dia">
+            <h4>Total del Día</h4>
+            <p class="monto">${{ "%.2f"|format(total_dia) }}</p>
+            <small>Ventas de hoy</small>
+        </div>
+
+        <div class="card-total semanal">
+            <h4>Total Semanal</h4>
+            <p class="monto">${{ "%.2f"|format(total_semanal) }}</p>
+            <small>Corte: Lunes a las 00:00 h</small>
+        </div>
+
+        <div class="card-total anual">
+            <h4>Total Anual</h4>
+            <p class="monto">${{ "%.2f"|format(total_anual) }}</p>
+            <small>Año actual</small>
+        </div>
+    </div>
+
+    <!-- Encabezado con Botón de Filtro -->
+    <div class="header-tabla">
+        <h3>
+            {% if ver_todo %}
+                📜 Mostrando: Todo el Historial Completo
+            {% else %}
+                📅 Mostrando: Ventas Únicamente de Hoy
+            {% endif %}
+        </h3>
+
+        {% if ver_todo %}
+            <a href="{{ url_for('historial_ventas', ver_todo='0') }}" class="btn-filter">📅 Ver Solo Ventas de Hoy</a>
+        {% else %}
+            <a href="{{ url_for('historial_ventas', ver_todo='1') }}" class="btn-filter">📜 Mostrar Historial Completo</a>
+        {% endif %}
+    </div>
+
+    <!-- Tabla de Detalle de Ventas -->
+    <div class="table-responsive">
+        {% if datos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>N° Venta</th>
+                    <th>Mesa</th>
+                    <th>Producto</th>
+                    <th>Precio U.</th>
+                    <th>Cant.</th>
+                    <th>Subtotal</th>
+                    <th>Fecha / Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                <tr>
+                    <td><strong>#{{ fila[0] }}</strong></td>
+                    <td>{{ fila[1] }}</td>
+                    <td>{{ fila[2] }}</td>
+                    <td>${{ "%.2f"|format(fila[3]) }}</td>
+                    <td>{{ fila[4] }}</td>
+                    <td><strong>${{ "%.2f"|format(fila[5]) }}</strong></td>
+                    <td>{{ fila[6] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666; font-style: italic; margin: 30px 0;">
+            {% if ver_todo %}
+                No hay registros de ventas en la base de datos.
+            {% else %}
+                No hay ventas registradas el día de hoy.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('administrador_inicio') }}" class="btn-back">⬅ Volver al Panel Admin</a>
+</div>
+
+</body>
+</html>

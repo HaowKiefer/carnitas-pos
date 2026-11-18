@@ -1,0 +1,45 @@
+name: Compilar CarnitasPOS para Windows 11
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias en Windows
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar CarnitasPOS.exe con PyInstaller
+        run: |
+          pyinstaller --noconfirm --onefile --windowed `
+            --add-data "templates;templates" `
+            --add-data "static;static" `
+            --hidden-import "mariadb" `
+            --hidden-import "webview.platforms.edgechromium" `
+            --name "CarnitasPOS" `
+            desktop.py
+
+      - name: Empaquetar CarnitasPOS.exe y carnitas.sql en ZIP
+        run: |
+          Copy-Item carnitas.sql dist\
+          Compress-Archive -Path dist\CarnitasPOS.exe, dist\carnitas.sql -DestinationPath CarnitasPOS_Windows11.zip -Force
+
+      - name: Subir ZIP descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarnitasPOS_Windows11
+          path: CarnitasPOS_Windows11.zip

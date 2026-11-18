@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Configuración de Recetas e Insumos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --danger: #e74c3c;
+            --bg: #f8f9fa; 
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .form-receta {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .form-receta select, .form-receta input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .btn-submit {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.25s ease;
+        }
+
+        .btn-submit:hover {
+            background: #2980b9;
+        }
+
+        .table-responsive { 
+            overflow-x: auto; 
+            margin-bottom: 20px; 
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+
+        th, td { 
+            padding: 12px 15px; 
+            border: 1px solid #e0e0e0; 
+            text-align: center; 
+            vertical-align: middle;
+        }
+
+        th { 
+            background-color: var(--primary); 
+            color: white; 
+            font-size: 13px; 
+            text-transform: uppercase; 
+        }
+
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f5f9; }
+
+        .btn-delete {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .alert-msg {
+            background: #e8f8f5;
+            color: #16a085;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border: 1px solid #a3e4d7;
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-back:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .form-receta { 
+                grid-template-columns: 1fr; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>CONFIGURAR RECETAS E INSUMOS</h2>
+
+    {% if mensaje %}
+    <div class="alert-msg">{{ mensaje }}</div>
+    {% endif %}
+
+    <!-- Formulario para asociar un producto de venta con su ingrediente en inventario -->
+    <form method="POST" action="{{ url_for('recetas') }}" class="form-receta">
+        <input type="hidden" name="accion" value="guardar">
+
+        <!-- 1. Producto que se vende (Ej: Taco Surtido) -->
+        <select name="producto_venta" required>
+            <option value="" disabled selected>Selecciona Producto de Venta</option>
+            {% for prod in productos_venta %}
+            <option value="{{ prod }}">{{ prod }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- 2. Insumo del inventario a descontar (Ej: Carne, Tortilla) -->
+        <select name="id_inventario" required>
+            <option value="" disabled selected>Selecciona Insumo a descontar</option>
+            {% for ins in insumos %}
+            <option value="{{ ins[0] }}">{{ ins[1] }} ({{ ins[2] }})</option>
+            {% endfor %}
+        </select>
+
+        <!-- 3. Cantidad gastada por cada unidad vendida (Solo números y punto) -->
+        <input type="text" 
+               inputmode="decimal" 
+               name="cantidad_descuento" 
+               placeholder="Cantidad (ej. 0.100)" 
+               required
+               onkeydown="validarSoloNumerosYPunto(event)"
+               oninput="filtrarEntrada(this)">
+
+        <!-- 4. Botón agregar -->
+        <button type="submit" class="btn-submit">➕ Agregar Insumo</button>
+    </form>
+
+    <!-- Tabla con el listado de recetas vigentes -->
+    <div class="table-responsive">
+        {% if recetas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto Vendido</th>
+                    <th>Insumo Consumido</th>
+                    <th>Descuento por Unidad</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recetas %}
+                <tr>
+                    <td><strong>{{ r[1] }}</strong></td>
+                    <td>{{ r[2] }}</td>
+                    <td><strong>{{ "%.3f"|format(r[3]) }} {{ r[4] }}</strong></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('recetas') }}" style="display:inline;">
+                            <input type="hidden" name="accion" value="eliminar">
+                            <input type="hidden" name="id_receta" value="{{ r[0] }}">
+                            <button type="submit" class="btn-delete">🗑️ Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: #666; font-style: italic; margin: 30px 0;">No se han asociado insumos a ningún producto aún.</p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('administrador_inicio') }}" class="btn-back">⬅ Volver al Panel Admin</a>
+</div>
+
+<!-- Scripts de control para impedir caracteres no numéricos -->
+<script>
+    function validarSoloNumerosYPunto(e) {
+        if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+        if (e.key === '.' && !e.target.value.includes('.')) return;
+        if (!/^[0-9]$/.test(e.key)) e.preventDefault();
+    }
+
+    function filtrarEntrada(input) {
+        input.value = input.value.replace(/[^0-9.]/g, '');
+        const partes = input.value.split('.');
+        if (partes.length > 2) input.value = partes[0] + '.' + partes.slice(1).join('');
+    }
+</script>
+
+</body>
+</html>

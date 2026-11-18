@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+        }
+
+        /* Contenedor principal de los botones */
+        .menu-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 900px;
+        }
+
+        /* Estilo de la tarjeta de botón */
+        .menu-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            width: 180px;
+            text-align: center;
+            border: none;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        .menu-card img {
+            border-radius: 10px;
+            margin-bottom: 10px;
+            object-fit: cover;
+        }
+
+        .menu-card span {
+            display: block;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        /* Alertas de error */
+        .error-msg {
+            background-color: #fee;
+            color: #e74c3c;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #fab1a0;
+        }
+
+        /* Link de salida */
+        .logout-btn {
+            margin-top: 40px;
+            text-decoration: none;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .logout-btn:hover {
+            color: #e74c3c;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Bienvenido, {{ usuario }}</h2>
+
+    {% if error %}
+        <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <div class="menu-container">
+        <form method="POST">
+            <input type="hidden" name="accion" value="ver_bebidas">
+            <button type="submit" class="menu-card">
+                <img src="{{ url_for('static', filename='img/bebida.png') }}" width="140" height="140">
+                <span>Bebidas</span>
+            </button>
+        </form>
+
+        <form method="POST">
+            <input type="hidden" name="accion" value="ver_comida">
+            <button type="submit" class="menu-card">
+                <img src="{{ url_for('static', filename='img/comida.png') }}" width="140" height="140">
+                <span>Comidas</span>
+            </button>
+        </form>
+
+        <form method="POST">
+            <input type="hidden" name="accion" value="ver_extras">
+            <button type="submit" class="menu-card">
+                <img src="{{ url_for('static', filename='img/extra.png') }}" width="140" height="140">
+                <span>Extras</span>
+            </button>
+        </form>
+
+        <form method="POST">
+            <input type="hidden" name="accion" value="agregar_producto">
+            <button type="submit" class="menu-card" style="border-top: 4px solid #2ecc71;">
+                <img src="{{ url_for('static', filename='img/yuji.png') }}" width="140" height="140">
+                <span>Agregar Producto</span>
+            </button>
+        </form>
+
+        <form method="POST">
+            <input type="hidden" name="accion" value="eliminar_producto">
+            <button type="submit" class="menu-card" style="border-top: 4px solid #e74c3c;">
+                <img src="{{ url_for('static', filename='img/yuji.png') }}" width="140" height="140">
+                <span>Eliminar Producto</span>
+            </button>
+        </form>
+    </div>
+
+    <a href="/logout" class="logout-btn">Cerrar sesión</a>
+
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Administrador</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --bg: #f8f9fa; 
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container-mesas {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        /* 4 botones fijos por renglón */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+        }
+
+        .grid form {
+            width: 100%;
+            margin: 0;
+        }
+
+        .card-btn {
+            background: white;
+            border: none;
+            border-radius: 14px;
+            padding: 15px 10px 20px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.12);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .card-btn img {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            transition: transform 0.25s ease;
+        }
+
+        .card-btn span {
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .card-btn:hover {
+            transform: translateY(-6px) scale(1.03);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.18);
+        }
+
+        .card-btn:hover img {
+            transform: scale(1.1);
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-back:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.35);
+        }
+
+        /* Adaptación responsiva en pantallas pequeñas */
+        @media (max-width: 850px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-mesas">
+    <h2>MODO ADMINISTRADOR</h2>
+
+    <div class="grid">
+        <!-- RENGLÓN 1 -->
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_bebidas">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/bebida.png') }}">
+                <span>Bebidas</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_comida">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/comida.png') }}">
+                <span>Comidas</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_extras">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/extra.png') }}">
+                <span>Extras</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_empleados">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/empleados.png') }}">
+                <span>Empleados</span>
+            </button>
+        </form>
+        
+        <!-- RENGLÓN 2 -->
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_nomina">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/empleados.png') }}">
+                <span>Nómina</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_inventario">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/inventario.png') }}">
+                <span>Inventario</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_historial">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/historial.png') }}">
+                <span>Historial</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_gastos">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/gastos.png') }}">
+                <span>Gastos</span>
+            </button>
+        </form>
+
+        <!-- RENGLÓN 3 -->
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="agregar_producto">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/logo.png') }}">
+                <span>Agregar</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="eliminar_producto">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/logo.png') }}">
+                <span>Eliminar</span>
+            </button>
+        </form>
+       
+        <form method="POST" action="{{ url_for('administrador_inicio') }}">
+            <input type="hidden" name="accion" value="ver_recetas">
+            <button type="submit" class="card-btn">
+                <img src="{{ url_for('static', filename='img/menu.png') }}">
+                <span>Recetas</span>
+            </button>
+        </form>
+    </div>
+
+    <a href="{{ url_for('login') }}" class="btn-back">⬅ Volver al selector de usuario</a>
+
+</div>
+
+</body>
+</html>

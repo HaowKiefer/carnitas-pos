@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Órdenes Mesa {{ mesa }}</title>
+</head>
+<body>
+
+<h1>Órdenes de la Mesa {{ mesa }}</h1>
+
+<table border="1">
+    <tr>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Precio</th>
+    </tr>
+
+    {% for o in ordenes %}
+    <tr>
+        <td>{{ o[0] }}</td>
+        <td>{{ o[1] }}</td>
+        <td>${{ o[2] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="{{ url_for('usuario_inicio') }}">Volver</a>
+
+</body>
+</html>

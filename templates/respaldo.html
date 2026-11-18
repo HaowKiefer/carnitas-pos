@@ -1,0 +1,47 @@
+<h2>Bienvenido {{ usuario }}</h2>
+
+<form method="POST">
+    <input type="hidden" name="accion" value="ver_bebidas">
+    <button type="submit" style="border:none;background:none;">
+        <img src="{{ url_for('static', filename='img/bebida.png') }}" width="150"><br>
+        BEBIDAS
+    </button>
+</form>
+
+<form method="POST">
+    <input type="hidden" name="accion" value="ver_comida">
+    <button type="submit" style="border:none;background:none;">
+        <img src="{{ url_for('static', filename='img/comida.png') }}" width="150"><br>
+        COMIDAS
+    </button>
+</form>
+
+<form method="POST">
+    <input type="hidden" name="accion" value="ver_extras">
+    <button type="submit" style="border:none;background:none;">
+        <img src="{{ url_for('static', filename='img/extra.png') }}" width="150"><br>
+        EXTRAS
+    </button>
+</form>
+
+<form method="POST">
+    <input type="hidden" name="accion" value="agregar_producto">
+    <button type="submit" style="border:none;background:none;">
+        <img src="{{ url_for('static', filename='img/yuji.png') }}" width="150"><br>
+        Agregar Producto
+    </button>
+</form>
+
+<form method="POST">
+    <input type="hidden" name="accion" value="eliminar_producto">
+    <button type="submit" style="border:none;background:none;">
+        <img src="{{ url_for('static', filename='img/yuji.png') }}" width="150"><br>
+        Eliminar Producto
+    </button>
+</form>
+
+{% if error %}
+<p style="color:red;">{{ error }}</p>
+{% endif %}
+
+<a href="/logout">Cerrar sesión</a>

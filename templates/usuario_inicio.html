@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Selector de Mesas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        :root { 
+            --primary: #2c3e50; 
+            --accent: #3498db; 
+            --disponible: #2ecc71; /* Verde */
+            --disponible-hover: #27ae60;
+            --ocupada: #e74c3c;    /* Rojo */
+            --ocupada-hover: #c0392b;
+            --bg: #f8f9fa; 
+            --text: #333; 
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f4f7f6, #eaf2f8);
+            color: var(--text);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container-mesas {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h2 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        /* Indicador de Disponibilidad */
+        .leyenda {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .leyenda-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-verde { background-color: var(--disponible); }
+        .dot-rojo { background-color: var(--ocupada); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 25px;
+        }
+
+        /* Tarjeta Base de la Mesa */
+        .card-btn {
+            border: none;
+            border-radius: 14px;
+            padding: 15px 10px 20px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.12);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            color: white; /* Texto blanco para legibilidad sobre fondo de color */
+        }
+
+        /* Estado Disponible (Verde) */
+        .card-btn.disponible {
+            background: var(--disponible);
+        }
+
+        .card-btn.disponible:hover {
+            background: var(--disponible-hover);
+        }
+
+        /* Estado Ocupado (Rojo) */
+        .card-btn.ocupada {
+            background: var(--ocupada);
+        }
+
+        .card-btn.ocupada:hover {
+            background: var(--ocupada-hover);
+        }
+
+        .card-btn img {
+            width: 120px;
+            margin-bottom: 10px;
+            transition: transform 0.25s ease;
+            filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
+        }
+
+        .card-btn span.titulo-mesa {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .card-btn span.estado-mesa {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .card-btn:hover {
+            transform: translateY(-6px) scale(1.03);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.22);
+        }
+
+        .card-btn:hover img {
+            transform: scale(1.1);
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 28px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-back:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.35);
+        }
+
+        .error-msg {
+            color: #e74c3c;
+            background: #fde8e8;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-mesas">
+    <h2>Selecciona una Mesa</h2>
+
+    <!-- Leyenda de colores -->
+    <div class="leyenda">
+        <div class="leyenda-item">
+            <span class="dot dot-verde"></span> Disponible
+        </div>
+        <div class="leyenda-item">
+            <span class="dot dot-rojo"></span> Ocupada
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <div class="grid">
+        {% for i in range(1, 7) %}
+        {% set num_str = i|string %}
+        {% set es_ocupada = num_str in mesas_ocupadas %}
+
+        <form method="POST" action="{{ url_for('usuario_inicio') }}">
+            <input type="hidden" name="mesa" value="{{ i }}">
+            <button type="submit" class="card-btn {% if es_ocupada %}ocupada{% else %}disponible{% endif %}">
+                <img src="{{ url_for('static', filename='img/mesa.png') }}" alt="Mesa {{ i }}">
+                <span class="titulo-mesa">Mesa {{ i }}</span>
+                <span class="estado-mesa">{% if es_ocupada %}Ocupada{% else %}Disponible{% endif %}</span>
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+
+    <a href="{{ url_for('login') }}" class="btn-back">⬅ Volver al selector de usuario</a>
+</div>
+
+</body>
+</html>

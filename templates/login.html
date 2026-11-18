@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Acceso</title>
+
+    <style>
+        /* 🔹 Fondo y tipografía */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa, #d0e1f9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 40px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* 🔹 Roles como tarjetas */
+        .roles {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+        }
+
+        .rol {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            width: 180px;
+        }
+
+        .rol:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .rol img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+
+        .rol p {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+        }
+
+        /* 🔹 Caja de login */
+        .login-box {
+            margin-top: 30px;
+            background: white;
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: none;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: #007BFF;
+        }
+
+        .login-box input[type="text"],
+        .login-box input[type="password"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .login-box input:focus {
+            border-color: #007BFF;
+            box-shadow: 0 0 5px rgba(0,123,255,0.5);
+        }
+
+        .login-box button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .login-box button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .login-box p {
+            margin-top: 15px;
+        }
+
+        /* 🔹 Mensaje de error */
+        .login-box .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* 🔹 Animación al mostrar login */
+        .login-box.show {
+            display: block;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+    </style>
+</head>
+
+<body>
+
+
+<div class="roles">
+    <!-- ADMIN -->
+    <div class="rol" onclick="mostrarLogin('admin')">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Admin" weight="500" height="500">
+        <p>Administrador</p>
+    </div>
+
+    <!-- USUARIO -->
+    <div class="rol" onclick="window.location.href='{{ url_for('usuario_inicio') }}'">
+        <img src="{{ url_for('static', filename='img/menu.png') }}" alt="Usuario" weight="500" height="500">
+        <p>Ordenar</p>
+    </div>
+</div>
+
+<!-- LOGIN SOLO PARA ADMIN -->
+<div class="login-box" id="loginBox">
+    <h2>Iniciar sesión (Admin)</h2>
+
+    <form method="POST">
+        <input type="hidden" name="rol" id="rol">
+
+        <input type="text" name="usuario" placeholder="Usuario" required><br>
+        <input type="password" name="password" placeholder="Contraseña" required><br><br>
+
+        <button type="submit">Entrar</button>
+    </form>
+
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+</div>
+
+<script>
+function mostrarLogin(tipo) {
+    const box = document.getElementById("loginBox");
+    box.classList.add("show");
+    document.getElementById("rol").value = tipo;
+    box.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
